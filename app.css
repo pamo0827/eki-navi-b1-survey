@@ -172,3 +172,6 @@ textarea, input, select {
 label.round { cursor: pointer; }
 .bar[hidden] { display: none; }
 .base-button { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; width: 48px; height: 48px; }
+.blank-base { fill: #ffffff; stroke: var(--line); stroke-width: 2; }
+/* 道と経路はしばらく使わないので、切り替えごと隠す */
+.modes-nav[hidden] { display: none; }

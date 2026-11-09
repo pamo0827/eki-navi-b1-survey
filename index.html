@@ -12,7 +12,8 @@
   <!-- 1. 地図。上の切り替えで 看板（記録）・道（改札の中の道筋をなぞる）・経路（最短経路を見る） -->
   <section class="screen" id="screen-map" aria-label="地図">
     <svg id="survey-map" role="img" aria-label="地下1階の地図" viewBox="0 0 100 100"></svg>
-    <nav class="floors modes-nav" aria-label="使い方">
+    <!-- 道と経路は、しばらく使わないので隠している（hidden を外すと戻る） -->
+    <nav class="floors modes-nav" aria-label="使い方" hidden>
       <button type="button" data-mode="sign" aria-pressed="true">看板</button>
       <button type="button" data-mode="path" aria-pressed="false">道</button>
       <button type="button" data-mode="route" aria-pressed="false">経路</button>

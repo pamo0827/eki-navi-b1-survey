@@ -243,7 +243,7 @@ async function main() {
   setImage(refPane, reference.src, reference.width, reference.height);
   // 最初は今の下絵を出す（JR の構内図は右上のボタンで開く）
   state.target = { src: image.src, name: image.src.split("/").pop(), width: image.width, height: image.height };
-  setImage(targetPane, image.src, image.width, image.height);
+  if (image.src) setImage(targetPane, image.src, image.width, image.height);
   redraw();
 }
 

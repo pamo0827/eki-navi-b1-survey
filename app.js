@@ -1117,7 +1117,8 @@ async function main() {
   }
   document.title = `新宿駅 ${config.floor.label}`;
   const { src, width, height } = config.image;
-  imageLayer.append(svgElement("image", { href: src, x: 0, y: 0, width, height, preserveAspectRatio: "none" }));
+  // 下絵の画像がなければ（JR の構内図を読み込む前）白い紙にする
+  imageLayer.append(src ? svgElement("image", { href: src, x: 0, y: 0, width, height, preserveAspectRatio: "none" }) : svgElement("rect", { x: 0, y: 0, width, height, class: "blank-base" }));
   // この端末に JR の構内図があれば、それを下絵にする
   if (config.jr) {
     try {

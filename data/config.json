@@ -5,7 +5,7 @@
     "code": "B1"
   },
   "image": {
-    "src": "data/base.png",
+    "src": "",
     "width": 2688,
     "height": 2308,
     "transform": {
@@ -16,7 +16,7 @@
       "e": -0.05506919642857143,
       "f": 129.2
     },
-    "note": "国交省の屋内地図オープンデータから作った画像。JR の構内図に差し替えるときは calibrate.html で transform を作る"
+    "note": "JR の構内図を読み込むまでの空白の下絵。大きさと変換は国交省のデータから作った画像（reference.png）と同じ"
   },
   "reference": {
     "src": "data/reference.png",
