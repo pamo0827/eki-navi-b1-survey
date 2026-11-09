@@ -1,0 +1,34 @@
+{
+  "floor": {
+    "ordinal": -1,
+    "label": "地下1階",
+    "code": "B1"
+  },
+  "image": {
+    "src": "data/base.png",
+    "width": 2688,
+    "height": 2308,
+    "transform": {
+      "a": 0.05506919642857143,
+      "b": 0,
+      "c": -43.113,
+      "d": 0,
+      "e": -0.05506919642857143,
+      "f": 129.2
+    },
+    "note": "国交省の屋内地図オープンデータから作った画像。JR の構内図に差し替えるときは calibrate.html で transform を作る"
+  },
+  "reference": {
+    "src": "data/reference.png",
+    "width": 2688,
+    "height": 2308,
+    "transform": {
+      "a": 0.05506919642857143,
+      "b": 0,
+      "c": -43.113,
+      "d": 0,
+      "e": -0.05506919642857143,
+      "f": 129.2
+    }
+  }
+}

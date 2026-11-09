@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
+  <meta name="robots" content="noindex, nofollow">
+  <title>新宿駅 地下1階</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <!-- 1. 地図。上の切り替えで 看板（記録）・道（改札の中の道筋をなぞる）・経路（最短経路を見る） -->
+  <section class="screen" id="screen-map" aria-label="地図">
+    <svg id="survey-map" role="img" aria-label="地下1階の地図" viewBox="0 0 100 100"></svg>
+    <nav class="floors modes-nav" aria-label="使い方">
+      <button type="button" data-mode="sign" aria-pressed="true">看板</button>
+      <button type="button" data-mode="path" aria-pressed="false">道</button>
+      <button type="button" data-mode="route" aria-pressed="false">経路</button>
+    </nav>
+
+    <!-- 看板: 印を下から出し、ドラッグで位置、つまみで向き -->
+    <div class="bar" data-bar="sign">
+      <span class="spacer"></span>
+      <button type="button" id="add-sign" class="sign-button" aria-label="看板を置く">
+        <svg viewBox="0 0 48 32" aria-hidden="true"><rect x="4" y="9" width="40" height="10" rx="2"></rect><path d="M24 19 v8 M19 23 l5 5 l5 -5"></path></svg>
+      </button>
+      <button type="button" id="to-photo" class="round primary" aria-label="次へ" disabled>→</button>
+    </div>
+
+    <!-- 道: 何もない所を押すと点を足す（選んでいる点とつながる）。点を押すと選ぶ／つなぐ。点はドラッグで動かす -->
+    <div class="bar" data-bar="path" hidden>
+      <label class="round ghost" aria-label="道のファイルを読み込む">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><path d="M12 15V4M7 9l5-5 5 5M5 19h14"></path></svg>
+        <input id="path-import" type="file" accept="application/json,.json" class="visually-hidden">
+      </label>
+      <button type="button" id="path-delete" class="round ghost" aria-label="選んだ点を消す" disabled>🗑</button>
+      <button type="button" id="path-save" class="round primary" aria-label="道を保存する">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"></path></svg>
+      </button>
+    </div>
+
+    <!-- 経路: 点を2つ押すと最短経路 -->
+    <div class="bar" data-bar="route" hidden>
+      <span class="spacer"></span>
+      <span id="route-length" class="pill-info" hidden></span>
+      <span class="spacer"></span>
+    </div>
+  </section>
+
+  <!-- 2. 写真 -->
+  <section class="screen" id="screen-photo" aria-label="看板の写真" hidden>
+    <div class="body">
+      <!-- 表と裏。表は地図のつまみの側から見た面。裏は写真があるときだけ、反対向きの看板として記録する -->
+      <div class="face" data-face="A">
+        <label class="camera" for="photo-A">
+          <span class="tag">表</span>
+          <img class="preview" alt="看板の表の写真" hidden>
+          <svg class="camera-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 15h8l3-5h10l3 5h8v23H8z"></path><circle cx="24" cy="26" r="7"></circle></svg>
+          <span class="visually-hidden">看板の表の写真を撮る</span>
+        </label>
+        <input id="photo-A" class="photo visually-hidden" type="file" accept="image/jpeg,image/png" capture="environment">
+        <p class="status" role="status"></p>
+      </div>
+      <div class="face" data-face="B">
+        <label class="camera" for="photo-B">
+          <span class="tag">裏の写真（あれば）</span>
+          <img class="preview" alt="看板の裏の写真" hidden>
+          <svg class="camera-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 15h8l3-5h10l3 5h8v23H8z"></path><circle cx="24" cy="26" r="7"></circle></svg>
+          <span class="visually-hidden">看板の裏の写真を撮る（なくてもよい）</span>
+        </label>
+        <input id="photo-B" class="photo visually-hidden" type="file" accept="image/jpeg,image/png" capture="environment">
+        <p class="status" role="status"></p>
+      </div>
+      <div id="sizes" class="sizes" role="radiogroup" aria-label="看板の大きさ"></div>
+      <div id="custom-size" class="custom-size" hidden>
+        <label>幅<input id="custom-width" type="number" inputmode="decimal" min="0.05" max="20" step="0.01" placeholder="0.0"><span>m</span></label>
+        <label>高さ<input id="custom-height" type="number" inputmode="decimal" min="0.05" max="5" step="0.01" placeholder="0.0"><span>m</span></label>
+      </div>
+      <!-- 文字は入力させない。ID・名前・大きさなどは自動の値を使う（ここは値を持つだけ） -->
+      <form id="sign-form" hidden novalidate>
+        <input id="name" type="hidden"><input id="sign-id" type="hidden"><input id="note" type="hidden">
+        <input id="width" type="hidden"><input id="height" type="hidden"><input id="center-height" type="hidden">
+        <input id="azimuth" type="hidden"><input id="mount" type="hidden"><input id="confidence" type="hidden" value="推定">
+      </form>
+    </div>
+    <div class="bar">
+      <button type="button" class="round ghost back" aria-label="戻る">←</button>
+      <span class="spacer"></span>
+      <button type="submit" form="sign-form" id="save" class="round primary" aria-label="記録する">✓</button>
+    </div>
+    <p id="form-status" class="status toast" role="status"></p>
+  </section>
+
+  <!-- 3. 保存: signs.json と写真をまとめた ZIP -->
+  <section class="screen" id="screen-list" aria-label="保存" hidden>
+    <div class="body save-body">
+      <pre id="output" class="output" aria-label="signs.json の中身" tabindex="0"></pre>
+      <p id="copy-status" class="status" role="status"></p>
+    </div>
+    <div class="bar">
+      <button type="button" id="list-back" class="round ghost" aria-label="地図へ">←</button>
+      <button type="button" id="download" class="round primary" aria-label="ZIP で保存する">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"></path></svg>
+      </button>
+      <button type="button" id="add-another" class="round ghost" aria-label="次の看板">＋</button>
+    </div>
+  </section>
+
+  <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <p id="confirm-title" class="dialog-title"></p>
+      <div class="dialog-buttons">
+        <button type="submit" value="no" id="confirm-no" class="pill ghost"></button>
+        <button type="submit" value="yes" id="confirm-yes" class="pill"></button>
+      </div>
+    </form>
+  </dialog>
+  <script src="geo.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

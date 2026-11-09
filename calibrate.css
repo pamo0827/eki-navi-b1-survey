@@ -1,0 +1,21 @@
+/* 下絵の位置合わせのページ。上下（横長の画面では左右）に2枚の画像を並べ、下に組の一覧を出す */
+body.calibrate { display: grid; grid-template-rows: 1fr auto; height: 100%; }
+.panes { display: grid; grid-template-rows: 1fr 1fr; gap: 4px; min-height: 0; }
+@media (min-aspect-ratio: 4/3) { .panes { grid-template-rows: none; grid-template-columns: 1fr 1fr; } }
+.pane { position: relative; min-height: 0; background: var(--panel); }
+.pane-map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+.pane-tag { position: absolute; top: 8px; left: 8px; padding: 2px 10px; border-radius: 12px; background: var(--text); color: var(--bg); font-weight: 700; font-size: 0.8rem; pointer-events: none; }
+.pane-open { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; }
+.pt circle { fill: var(--accent); stroke: #fff; }
+.pt.pending circle { fill: #c62828; }
+.pt text { fill: #fff; font-weight: 700; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.residual { stroke: #c62828; fill: none; }
+.overlay-image { opacity: 0.45; pointer-events: none; }
+.panel { padding: 8px 12px max(12px, env(safe-area-inset-bottom)); display: grid; gap: 6px; max-height: 38vh; overflow-y: auto; background: var(--bg); }
+.hint-line, .fit-line { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.fit-line.good { color: #2e7d32; }
+.fit-line.bad { color: var(--error); }
+.pairs { margin: 0; padding-left: 1.6em; font-size: 0.8rem; display: grid; gap: 2px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row .pill { height: 40px; padding: 0 16px; }
+.row label.check { display: flex; gap: 6px; align-items: center; font-size: 0.85rem; }

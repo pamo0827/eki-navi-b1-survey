@@ -1,0 +1,173 @@
+/* 案内板の記録のページ。地図を画面いっぱいに出し、地図 → 写真 → 一覧の3つの画面をすべらせて切り替える */
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --text: #1a1d21;
+  --muted: #5c6670;
+  --line: #d4d9de;
+  --accent: #0b5fff;
+  --on-accent: #ffffff;
+  --network: #b8c0c8;
+  --error: #b3261e;
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  --font: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171b;
+    --panel: #1f242a;
+    --text: #eef1f4;
+    --muted: #a5afb9;
+    --line: #39414a;
+    --accent: #5c8dff;
+    --on-accent: #0d1117;
+    --network: #4b545e;
+    --error: #ff8a80;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); }
+body { overscroll-behavior: none; }
+button { font: inherit; cursor: pointer; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 画面の切り替え */
+.screen {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  background: var(--bg); transition: transform 260ms ease, opacity 260ms ease;
+}
+.screen[hidden] { display: flex; visibility: hidden; transform: translateX(100%); pointer-events: none; }
+.screen.behind { visibility: hidden; transform: translateX(-30%); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .screen { transition: none; } }
+
+/* 地図 */
+#survey-map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; background: var(--bg); }
+.network { fill: none; stroke: var(--network); }
+.gate-dot { fill: var(--muted); }
+.gate-label { fill: var(--text); paint-order: stroke; stroke: var(--bg); stroke-width: 0.25em; }
+.known-sign { fill: var(--muted); opacity: 0.7; }
+.recorded-sign { fill: var(--text); }
+.marker .board { fill: var(--accent); stroke: var(--panel); }
+.marker .face { fill: none; stroke: var(--accent); stroke-linecap: round; }
+.marker .knob { fill: var(--panel); stroke: var(--accent); }
+.marker .hit { fill: transparent; }
+.saved .board { fill: var(--text); opacity: 0.75; }
+.saved .tick { stroke: var(--text); opacity: 0.75; stroke-linecap: round; }
+.saved.known .board, .saved.known .tick { opacity: 0.35; }
+.marker { cursor: grab; }
+.marker.dragging { cursor: grabbing; }
+
+/* 丸いボタン */
+.round {
+  width: 52px; height: 52px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: var(--panel); color: var(--text); font-size: 1.4rem; box-shadow: var(--shadow);
+}
+.round.primary { background: var(--accent); color: var(--on-accent); }
+.round.big { width: 68px; height: 68px; font-size: 1.8rem; }
+.round.ghost { box-shadow: var(--shadow); }
+.round:disabled { opacity: 0.35; cursor: default; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid #ffd43d; outline-offset: 2px; }
+/* 入力欄は黄色い枠を出さず、枠線の色だけ変える */
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+.floors { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; display: flex; border-radius: 26px; overflow: hidden; box-shadow: var(--shadow); }
+.floors a { padding: 12px 16px; background: var(--panel); color: var(--text); text-decoration: none; font-weight: 700; }
+.floors a[aria-current="page"] { background: var(--accent); color: var(--on-accent); }
+
+.bar {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px max(20px, env(safe-area-inset-bottom)); pointer-events: none;
+}
+.bar > * { pointer-events: auto; }
+.sign-button {
+  width: 96px; height: 64px; border: 0; border-radius: 18px; background: var(--panel); box-shadow: var(--shadow);
+  display: grid; place-items: center; transition: transform 200ms ease;
+}
+.sign-button svg { width: 56px; height: 38px; }
+.sign-button rect { fill: var(--accent); }
+.sign-button path { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.sign-button.placed { transform: translateY(220%); }
+
+/* 写真と一覧 */
+.top { display: flex; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 12px 8px; }
+.where { color: var(--muted); font-size: 0.85rem; }
+.body { flex: 1; overflow-y: auto; padding: max(16px, env(safe-area-inset-top)) 16px 120px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
+/* 写真の画面は、表と裏の枠を画面の真ん中に置く */
+/* 中身が画面より高いときは上から並べる（safe center。真ん中にそろえて上が切れないように） */
+#screen-photo .body { align-content: safe center; padding-bottom: 104px; }
+.status:empty { display: none; }
+.body > * { width: 100%; max-width: 560px; justify-self: center; }
+.camera {
+  display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden;
+  background: var(--panel); border: 2px dashed var(--line); cursor: pointer;
+}
+.face { display: grid; gap: 6px; }
+.camera { position: relative; }
+.tag { position: absolute; top: 8px; left: 8px; z-index: 1; padding: 2px 10px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 0.85rem; }
+.face[data-face="B"] .tag { background: var(--text); color: var(--bg); }
+.camera svg { width: 72px; height: 72px; fill: none; stroke: var(--muted); stroke-width: 2.5; stroke-linejoin: round; }
+.camera img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.camera.has-photo { aspect-ratio: auto; border: 0; background: transparent; }
+/* 縦長の写真でも画面に収まるよう、1枚の高さは画面の 3 割まで。横は写真の比のまま真ん中に置く */
+.camera.has-photo img { width: auto; max-width: 100%; height: auto; max-height: 30vh; margin: 0 auto; }
+textarea, input, select {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel); color: var(--text); font: 0.95rem/1.5 var(--font);
+}
+.status { margin: 0; min-height: 1.2em; color: var(--muted); font-size: 0.85rem; }
+.status.error { color: var(--error); }
+.toast { position: absolute; left: 16px; right: 16px; bottom: 104px; text-align: center; }
+.more summary { list-style: none; width: 52px; height: 32px; margin: 0 auto; border-radius: 16px; display: grid; place-items: center; background: var(--panel); color: var(--muted); cursor: pointer; }
+.more summary::-webkit-details-marker { display: none; }
+.fields { display: grid; gap: 10px; margin-top: 12px; }
+.fields label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.fields label.check { display: flex; align-items: center; gap: 8px; }
+.fields label.check input { width: auto; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.spacer { width: 52px; }
+.camera img[hidden] { display: none; }
+/* 大きさのボタン。板の形を縦横の比のまま描き、下に寸法（m）を出す */
+.sizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.size { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; border: 2px solid transparent; border-radius: 12px; background: var(--panel); color: var(--muted); font-size: 0.75rem; box-shadow: var(--shadow); }
+.size svg { width: 40px; height: 40px; }
+.size rect { fill: var(--muted); }
+.size[aria-checked="true"] { border-color: var(--accent); color: var(--text); }
+.size[aria-checked="true"] rect { fill: var(--accent); }
+.size rect.custom { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 4 3; }
+.size[aria-checked="true"] rect.custom { fill: none; stroke: var(--accent); }
+.custom-size { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* 隠しても場所は空けておく（出したときに画面の中身が上に動かないように） */
+.custom-size[hidden] { display: grid; visibility: hidden; }
+.custom-size label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.custom-size input { flex: 1; min-width: 0; text-align: right; }
+.icon { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+/* 保存の画面は、signs.json の中身を真ん中に、保存のボタンは下の並びの真ん中に置く */
+.save-body { align-content: center; padding-bottom: 104px; }
+.save-body .status { text-align: center; }
+.round .icon { width: 26px; height: 26px; }
+.output { margin: 0; max-height: 62vh; overflow: auto; padding: 12px; border-radius: 12px; background: var(--panel); color: var(--text); font: 0.72rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+/* 確認のダイアログ */
+.dialog { border: 0; border-radius: 20px; padding: 24px 20px 16px; width: min(320px, calc(100vw - 48px)); background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+.dialog form { display: grid; gap: 20px; }
+.dialog-title { margin: 0; text-align: center; font-size: 1.1rem; font-weight: 700; }
+.dialog-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pill { height: 48px; border: 0; border-radius: 24px; font-weight: 700; font-size: 1rem; }
+.pill.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.pill.danger { background: #c62828; color: #fff; }
+.pill.primary { background: var(--accent); color: var(--on-accent); }
+/* 使い方の切り替え（看板・道・経路） */
+.modes-nav button { padding: 12px 16px; border: 0; background: var(--panel); color: var(--text); font-weight: 700; }
+.modes-nav button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+/* 道（改札の中の道筋）と経路 */
+.edge { stroke: #1a1d21; opacity: 0.55; stroke-linecap: round; }
+.edge.routed { stroke: var(--accent); opacity: 1; }
+.node { fill: #ffffff; stroke: #1a1d21; }
+.node.selected { fill: var(--accent); stroke: #ffffff; }
+.node.end { fill: var(--accent); stroke: #ffffff; }
+.network-layer .hit { fill: transparent; }
+.pill-info { padding: 10px 18px; border-radius: 24px; background: var(--panel); color: var(--text); font-weight: 700; box-shadow: var(--shadow); }
+.pill-info[hidden] { display: none; }
+label.round { cursor: pointer; }
+.bar[hidden] { display: none; }
