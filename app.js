@@ -1016,11 +1016,12 @@ $("download").addEventListener("click", async () => {
 });
 
 // ---- 下絵（JR の構内図） ----
-// JR の構内図はリポジトリに入れず、各端末で読み込んで IndexedDB に残す。位置合わせは config.json の jr。
-// 画像の大きさが合わせたときと違っても、縦横の比が同じなら（2% まで）縮尺だけ直して使う
+// JR の構内図はリポジトリに入れず、各端末で読み込んで IndexedDB に残す。位置合わせは config.json の jr（画像ごとに1つ）。
+// 読み込んだ画像と縦横の比が同じ（0.5% まで）位置合わせを使い、大きさが違えば縮尺だけ直す。
+// 変換には回転も入っているので、北が上でない図でも、看板の位置と向きは北を基準にした値で記録する
 const BASE_DB = "eki-b1-base";
 const BASE_STORE = "base";
-const ASPECT_TOLERANCE = 0.02;
+const ASPECT_TOLERANCE = 0.005;
 
 function baseStore(mode, action) {
   return new Promise((resolve, reject) => {
@@ -1038,9 +1039,11 @@ function baseStore(mode, action) {
 
 // 読み込んだ画像の大きさに合わせて、jr の変換の縮尺を直す
 function jrImage(src, width, height) {
-  const jr = state.config.jr;
+  const list = [].concat(state.config.jr || []);
+  const ratio = (item) => Math.abs(height / width - item.height / item.width) / (item.height / item.width);
+  const jr = list.filter((item) => ratio(item) <= ASPECT_TOLERANCE).sort((p, q) => ratio(p) - ratio(q))[0];
+  if (!jr) return null;
   const k = width / jr.width;
-  if (Math.abs(height / width - jr.height / jr.width) > ASPECT_TOLERANCE * (jr.height / jr.width)) return null;
   const t = jr.transform;
   return { src, width, height, transform: { a: t.a / k, b: t.b / k, c: t.c, d: t.d / k, e: t.e / k, f: t.f } };
 }
