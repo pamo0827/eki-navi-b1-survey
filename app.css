@@ -171,3 +171,4 @@ textarea, input, select {
 .pill-info[hidden] { display: none; }
 label.round { cursor: pointer; }
 .bar[hidden] { display: none; }
+.base-button { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; width: 48px; height: 48px; }

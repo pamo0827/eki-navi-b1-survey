@@ -1015,6 +1015,77 @@ $("download").addEventListener("click", async () => {
   showStatus(status, `保存しました（写真 ${files.length - 1} 枚）`, false);
 });
 
+// ---- 下絵（JR の構内図） ----
+// JR の構内図はリポジトリに入れず、各端末で読み込んで IndexedDB に残す。位置合わせは config.json の jr。
+// 画像の大きさが合わせたときと違っても、縦横の比が同じなら（2% まで）縮尺だけ直して使う
+const BASE_DB = "eki-b1-base";
+const BASE_STORE = "base";
+const ASPECT_TOLERANCE = 0.02;
+
+function baseStore(mode, action) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(BASE_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(BASE_STORE);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const tx = request.result.transaction(BASE_STORE, mode);
+      const result = action(tx.objectStore(BASE_STORE));
+      tx.oncomplete = () => resolve(result?.result);
+      tx.onerror = () => reject(tx.error);
+    };
+  });
+}
+
+// 読み込んだ画像の大きさに合わせて、jr の変換の縮尺を直す
+function jrImage(src, width, height) {
+  const jr = state.config.jr;
+  const k = width / jr.width;
+  if (Math.abs(height / width - jr.height / jr.width) > ASPECT_TOLERANCE * (jr.height / jr.width)) return null;
+  const t = jr.transform;
+  return { src, width, height, transform: { a: t.a / k, b: t.b / k, c: t.c, d: t.d / k, e: t.e / k, f: t.f } };
+}
+
+function useImage(image) {
+  state.config.image = image;
+  state.t = image.transform;
+  imageLayer.replaceChildren(svgElement("image", { href: image.src, x: 0, y: 0, width: image.width, height: image.height, preserveAspectRatio: "none" }));
+  // 置いている途中の印は、新しい下絵では位置が変わるので消す
+  state.sign = null;
+  $("to-photo").disabled = true;
+  $("add-sign").classList.remove("placed");
+  fitImage();
+  state.home = { ...state.view };
+  applyView();
+}
+
+function imageSize(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve([image.naturalWidth, image.naturalHeight]);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+$("base-file").addEventListener("change", async () => {
+  const file = $("base-file").files[0];
+  $("base-file").value = "";
+  if (!file || !state.config.jr) return;
+  const src = await new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+  const [width, height] = await imageSize(src);
+  const image = jrImage(src, width, height);
+  if (!image) {
+    await ask("位置を合わせた JR の構内図と、縦横の比が違います", "閉じる", "OK");
+    return;
+  }
+  await baseStore("readwrite", (store) => store.put(src, "jr")).catch(() => {});
+  useImage(image);
+});
+
 // ---- はじめ ----
 
 async function loadJson(path) {
@@ -1044,6 +1115,23 @@ async function main() {
   document.title = `新宿駅 ${config.floor.label}`;
   const { src, width, height } = config.image;
   imageLayer.append(svgElement("image", { href: src, x: 0, y: 0, width, height, preserveAspectRatio: "none" }));
+  // この端末に JR の構内図があれば、それを下絵にする
+  if (config.jr) {
+    try {
+      const saved = await baseStore("readonly", (store) => store.get("jr"));
+      if (saved) {
+        const [w, h] = await imageSize(saved);
+        const image = jrImage(saved, w, h);
+        if (image) {
+          state.config.image = image;
+          state.t = image.transform;
+          imageLayer.replaceChildren(svgElement("image", { href: image.src, x: 0, y: 0, width: w, height: h, preserveAspectRatio: "none" }));
+        }
+      }
+    } catch {
+      // 読めなければ国交省の画像のまま
+    }
+  }
   history.replaceState({ screen: "map" }, "", location.search);
   renderSizes();
   selectSize(SIZES[0].key);

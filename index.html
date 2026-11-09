@@ -17,6 +17,11 @@
       <button type="button" data-mode="path" aria-pressed="false">道</button>
       <button type="button" data-mode="route" aria-pressed="false">経路</button>
     </nav>
+    <!-- 下絵を JR の構内図にする。画像はこの端末に保存するだけで、どこにも送らない -->
+    <label class="round ghost base-button" aria-label="下絵の画像を選ぶ">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 16l5-5 4 4 3-3 6 6"></path><circle cx="16" cy="9" r="1.5"></circle></svg>
+      <input id="base-file" type="file" accept="image/png,image/jpeg" class="visually-hidden">
+    </label>
 
     <!-- 看板: 印を下から出し、ドラッグで位置、つまみで向き -->
     <div class="bar" data-bar="sign">
